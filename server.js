@@ -1,7 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Fruits = require('./model/fruits');
-// const Upload = require('./upload');
+const Upload = require('./config/common/upload')
+const Users = require('./model/user')
+const transporter = require('./config/common/mail');
 const app = express();
 const port = 3000
 
@@ -12,7 +14,7 @@ app.listen(port, () => {
     console.log(`Server đang chạy ở cổng ${port}`)
 })
 
-const uri = 'mongodb+srv://slide3:top16airivietnam@sanphams.9silvsv.mongodb.net/Lab'
+const uri = 'mongodb+srv://slide3:123@sanphams.9silvsv.mongodb.net/Lab'
 
 app.get('/list-fruit', async (req, res) => {
     try {
@@ -178,3 +180,90 @@ app.put('/update-fruit/:id', async (req, res) => {
         res.status(500).send('Lỗi máy chủ nội bộ');
     }
 });
+
+app.post('/upload-image', Upload.array('image', 5), async (req, res) => {
+    await mongoose.connect(uri);
+
+    try {
+        const data = req.body;
+        const files = req.files;
+
+        console.log(JSON.stringify(data));
+
+        const urlImages = files.map(file => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`);
+
+        const newFruits = new Fruits({
+            name: data.name,
+            quantity: data.quantity,
+            price: data.price,
+            status: data.status,
+            image: urlImages,
+            description: data.description,
+            id_distributor: data.id_distributor
+        });
+
+        const result = await newFruits.save();
+
+        if (result) {
+            res.json({
+                "status": "200",
+                "messenger": "Thêm thành công",
+                "data": result,
+            });
+        } else {
+            res.json({
+                "status": "400",
+                "messenger": "Lỗi, thêm không thành công",
+                "data": [],
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "status": "500",
+            "messenger": "Lỗi máy chủ nội bộ",
+            "data": [],
+        });
+    }
+});
+
+// gui mail
+// app.post('/register', Upload.single('avatar'), async(req,res) => {
+//     await mongoose.connect(uri);
+//     try {
+//         const data = req.body;
+//         const file = req.file;
+//         const newUser = Users({
+//             username: data.username,
+//             password: data.password,
+//             name: data.name,
+//             email: data.email,
+//             avatar: `${req.protocol}://${req.get('host')}/uploads/${file.filename}`,
+//         })
+//         const result = await newUser.save()
+//         if(result){
+//             const mailOptions ={
+//                 from : "linhhqph43159@gmail.com", //email gửi đi
+//                 to : result.email, //email nhận
+//                 subject : "Đăng ký thành công", //subject
+//                 text : "Cảm ơn bạn đã đăng ký.", //nội dung mail
+//              }
+
+//              await transporter.sendMail(mailOptions);  //gửi mail
+
+//              res.json({
+//                  "status" : 200,
+//                  "messenger" : "Thành thành công",
+//                  "data" : result
+//              })
+//          }else{
+//               res.json({
+//                   "status" : 400,
+//                   "messenger" :"Lỗi ,thêm không thành công",
+//                   "data": []
+//               })
+//           }
+//       } catch (error) {
+//           console.log(error);
+//       }
+// })
